@@ -6,12 +6,14 @@ extern crate mirror_derive;
 pub mod error;
 pub mod list;
 pub mod primitive;
+pub mod hidden;
 
 pub use mirror_derive::*;
 
 pub use self::error::*;
 pub use self::list::*;
 pub use self::primitive::*;
+pub use self::hidden::*;
 
 use regex::{Regex, RegexSet};
 use serde::*;
