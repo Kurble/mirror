@@ -1,6 +1,5 @@
 extern crate serde;
 extern crate serde_json;
-extern crate regex;
 extern crate mirror_derive;
 
 pub mod error;
@@ -8,14 +7,19 @@ pub mod list;
 pub mod primitive;
 pub mod hidden;
 
+pub mod remote;
+pub mod client;
+pub mod private_server;
+pub mod shared_server;
+
 pub use mirror_derive::*;
 
 pub use self::error::*;
 pub use self::list::*;
 pub use self::primitive::*;
 pub use self::hidden::*;
+pub use self::remote::*;
 
-use regex::{Regex, RegexSet};
 use serde::*;
 use serde_json::{Value, StreamDeserializer};
 use serde_json::de::StrRead;
@@ -69,78 +73,48 @@ pub trait Reflect<'de>: Deserialize<'de> {
 
 impl Command {
     pub fn parse(command: &str) -> Result<Self, Error> {
-        let set = &[
-            r"[A-Za-z_0-9]*/",
-            r"set:",
-            r"push:",
-            r"pop:",
-            r"insert:",
-            r"remove:",
-            r"call:",
-        ];
+        if command.starts_with("set:") {
+            let mut stream = StreamDeserializer::new(StrRead::new(command.split_at("set:".len()).1));
+            Ok(Command::Set {
+                value: stream.next().ok_or(Error::WrongArgumentCount)??,
+            })
+        } else if command.starts_with("push:") {
+            let mut stream = StreamDeserializer::new(StrRead::new(command.split_at("push:".len()).1));
+            Ok(Command::Push {
+                value: stream.next().ok_or(Error::WrongArgumentCount)??,
+            })
+        } else if command.starts_with("pop:") {
+            Ok(Command::Pop)
+        } else if command.starts_with("insert:") {
+            let mut stream = StreamDeserializer::new(StrRead::new(command.split_at("insert:".len()).1));
+            Ok(Command::Insert {
+                key: stream.next().ok_or(Error::WrongArgumentCount)??,
+                value: stream.next().ok_or(Error::WrongArgumentCount)??,
+            })
+        } else if command.starts_with("remove:") {
+            let mut stream = StreamDeserializer::new(StrRead::new(command.split_at("remove:".len()).1));
+            Ok(Command::Remove {
+                key: stream.next().ok_or(Error::WrongArgumentCount)??,
+            })
+        } else if command.starts_with("call:") {
+            let cmd = command.split_at("call:".len()).1;
+            let (key, args) = cmd.split_at(cmd.find(':').unwrap());
 
-        let commands = RegexSet::new(set)?;
-
-        if commands.is_match(command) {
-            let matches = commands.matches(command);
-            let index = matches.into_iter().next().unwrap();
-            let regex = Regex::new(set[index])?;
-            let split_command = command.split_at(regex.shortest_match(command).unwrap());
-
-            match index {
-                0 => {
-                    Ok(Command::Path {
-                        element: split_command.0.split('/').next().unwrap().into(),
-                        command: Box::new(Command::parse(split_command.1)?),
-                    })
-                },
-                1 => {
-                    let mut stream = StreamDeserializer::new(StrRead::new(split_command.1));
-                    Ok(Command::Set {
-                        value: stream.next().ok_or(Error::WrongArgumentCount)??,
-                    })
-                },
-                2 => {
-                    let mut stream = StreamDeserializer::new(StrRead::new(split_command.1));
-                    Ok(Command::Push {
-                        value: stream.next().ok_or(Error::WrongArgumentCount)??,
-                    })
-                },
-                3 => {
-                    Ok(Command::Pop)
-                },
-                4 => {
-                    let mut stream = StreamDeserializer::new(StrRead::new(split_command.1));
-                    Ok(Command::Insert {
-                        key: stream.next().ok_or(Error::WrongArgumentCount)??,
-                        value: stream.next().ok_or(Error::WrongArgumentCount)??,
-                    })
-                },
-                5 => {
-                    let mut stream = StreamDeserializer::new(StrRead::new(split_command.1));
-                    Ok(Command::Remove {
-                        key: stream.next().ok_or(Error::WrongArgumentCount)??,
-                    })
-                },
-                6 => {
-                    let cmd = split_command.1;
-                    let (key, args) = cmd.split_at(cmd.find(':').unwrap());
-
-                    let stream = StreamDeserializer::new(StrRead::new(&args[1..]));
-                    let mut arguments = Vec::new();
-                    for result in stream {
-                        arguments.push(result?);
-                    }
-
-                    Ok(Command::Call {
-                        key: key.into(),
-                        arguments,
-                    })
-                }
-                _ => {
-                    unimplemented!()
-                },
+            let stream = StreamDeserializer::new(StrRead::new(&args[1..]));
+            let mut arguments = Vec::new();
+            for result in stream {
+                arguments.push(result?);
             }
+
+            Ok(Command::Call {
+                key: key.into(),
+                arguments,
+            })
+        } else if command.contains("/") {
+            Ok(Command::Path {
+                element: command.split('/').next().unwrap().into(),
+                command: Box::new(Command::parse(command.split_at(command.find("/").unwrap() + 1).1)?),
+            })
         } else {
             Err(Error::InvalidCommand)
         }

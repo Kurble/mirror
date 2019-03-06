@@ -1,7 +1,5 @@
 #[derive(Debug)]
 pub enum Error {
-    Regex(regex::Error),
-
     Json(serde_json::Error),
 
     ParseIntError(std::num::ParseIntError),
@@ -15,12 +13,8 @@ pub enum Error {
     InvalidCommand,
 
     IncompatibleCommand,
-}
 
-impl From<regex::Error> for Error {
-    fn from(err: regex::Error) -> Self {
-        Error::Regex(err)
-    }
+    ConnectionDropped,
 }
 
 impl From<serde_json::Error> for Error {
