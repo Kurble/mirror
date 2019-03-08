@@ -1,6 +1,6 @@
 use super::*;
 use crate::reply::Reply;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::sync::mpsc::Receiver;
 use serde::Serialize;
 
@@ -15,12 +15,6 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> Deref for SharedServer<T, R>
 
     fn deref(&self) -> &T {
         &self.value
-    }
-}
-
-impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> DerefMut for SharedServer<T, R> {
-    fn deref_mut(&mut self) -> &mut T {
-        &mut self.value
     }
 }
 
