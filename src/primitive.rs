@@ -4,7 +4,7 @@ use serde_json::from_value;
 pub trait Primitive<'de>: Deserialize<'de> { }
 
 impl<'de, T: for<'e> Primitive<'e>> Reflect<'de> for T {
-    fn command(&mut self, command: &Command) -> Result<(), Error> {
+    fn command<C: Context>(&mut self, _: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Set{ ref value } => {
                 *self = from_value(value.clone())?;

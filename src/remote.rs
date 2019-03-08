@@ -27,16 +27,6 @@ pub trait Remote {
     }
 }
 
-/// Trait for function context when handling remote procedure calls (RPC)
-pub trait Context {
-    /// Sends a response command to local and remote value(s).
-    /// The implementor is responsible for handling errors internally.
-    fn reply(&mut self, command: &str) -> Result<(), Error>;
-
-    /// Closes the connection that the context originates from
-    fn kick(&mut self);
-}
-
 /// Iterates over the available messages from a remote node.
 pub struct Iter<'a, R: 'a + Remote + ?Sized>(&'a mut R);
 

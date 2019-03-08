@@ -54,13 +54,16 @@ fn impl_reflect_struct(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
 
     let tokens = quote! {
         impl #impl_generics Reflect<'de> for #name #type_generics #where_clause {
-            fn command(&mut self, command: &Command) -> Result<(), Error> {
+            fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
                 use serde_json::from_value;
                 match command {
                     &Command::Path { ref element, ref command } => {
                         #(if element == stringify!(#field_str) {
-                            self.#field_id.command(command)?;
-                            Ok(())
+                            let mut result = Ok(());
+                            context.with_inner(element.as_str(), |c| {
+                                result = self.#field_id.command(c,command);
+                            });
+                            result
                         } else )* {
                             Err(Error::PathError)
                         }
@@ -70,7 +73,7 @@ fn impl_reflect_struct(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
                         Ok(())
                     },
                     &Command::Call { ref key, ref arguments } => {
-                        Ok(self._call(key.as_str(), arguments.as_slice())?)
+                        Ok(self._call(key.as_str(), context, arguments.as_slice())?)
                     },
                     &_ => {
                         Err(Error::IncompatibleCommand)
@@ -182,7 +185,7 @@ fn impl_reflect_actions(ast: &DeriveInput) -> proc_macro2::TokenStream {
         }
 
         let function_call = quote_spanned!{ span =>
-            #function_name(#( #args ),*)
+            #function_name(context, #( #args ),*)
         };
 
         arms.push(quote_spanned!{ Span::call_site() =>
@@ -202,7 +205,7 @@ fn impl_reflect_actions(ast: &DeriveInput) -> proc_macro2::TokenStream {
 
     let tokens = quote! {
         impl #impl_generics #name #type_generics #where_clause {
-            fn _call(&mut self, key: &str, arguments: &[serde_json::Value]) -> Result<(), Error> {
+            fn _call<C: Context>(&mut self, key: &str, context: C, arguments: &[serde_json::Value]) -> Result<(), Error> {
                 #match_statement
             }
         }

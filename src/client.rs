@@ -62,7 +62,7 @@ impl<T: for<'a> Reflect<'a>, R: Remote> Client<T, R> {
 
     pub fn update(&mut self) {
         for message in self.remote.iter() {
-            self.value.command_str(message.as_str()).expect("Invalid message received");
+            self.value.command_str((), message.as_str()).expect("Invalid message received");
         }
     }
 

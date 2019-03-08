@@ -2,12 +2,15 @@ use super::*;
 use serde_json::from_value;
 
 impl<'de, T: for<'e> Reflect<'e>> Reflect<'de> for Vec<T> {
-    fn command(&mut self, command: &Command) -> Result<(), Error> {
+    fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Path { ref element, ref command } => {
                 let index: usize = element.parse()?;
                 let elem: &mut T = self.get_mut(index).ok_or(Error::PathError)?;
-                Ok(elem.command(command)?)
+
+                let mut result = Ok(());
+                context.with_inner(element.as_str(), |c| result=elem.command(c, command));
+                result
             },
             &Command::Set { ref value } => {
                 *self = from_value(value.clone())?;
@@ -34,12 +37,16 @@ macro_rules! array {
     ($($nn:expr,)*) => { $(array!($nn);)* };
     ($n:expr) => {
         impl<'de, T: for<'e> Reflect<'e>> Reflect<'de> for [T; $n] {
-            fn command(&mut self, command: &Command) -> Result<(), Error> {
+            fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
                 match command {
                     &Command::Path { ref element, ref command } => {
                         let index: usize = element.parse()?;
                         let elem: &mut T = self.get_mut(index).ok_or(Error::PathError)?;
-                        Ok(elem.command(command)?)
+                        let mut result = Ok(());
+                        context.with_inner(element.as_str(), |c| {
+                            result = elem.command(c, command).map(|_|());
+                        });
+                        result
                     },
                     &Command::Set { ref value } => {
                         *self = from_value(value.clone())?;

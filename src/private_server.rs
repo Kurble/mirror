@@ -1,4 +1,5 @@
 use super::*;
+use crate::reply::Reply;
 
 use std::ops::Deref;
 use std::sync::mpsc::Receiver;
@@ -35,21 +36,27 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateServer<T, R> {
         for mut remote in self.listener.try_iter() {
             let value = (self.factory)();
 
-            // send over the base value to the use as part of the protocol
+            // send over the base value to the remote as part of the protocol
             if remote.send(serde_json::to_string(&value).unwrap().as_str()).is_ok() {
                 self.clients.push(PrivateClient { value, remote });
             }
         }
 
         for client in self.clients.iter_mut() {
-            let mut kill = false;
+            let mut failed = false;
+            let mut reply = Vec::new();
+
             for message in client.remote.iter() {
-                if client.value.command_str(message.as_str()).is_err() {
-                    kill = true;
+                if client.value.command_str(Reply::new(&mut reply), message.as_str()).is_err() {
+                    failed = true;
                 }
             }
 
-            if kill {
+            for r in reply.into_iter() {
+                failed &= client.remote.send(r.as_str()).is_err();
+            }
+
+            if failed {
                 client.remote.close();
             }
         }
@@ -64,7 +71,7 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateServer<T, R> {
 
 impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateClient<T, R> {
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
-        match self.value.command_str(command) {
+        match self.value.command_str((), command) {
             Ok(_) => {
                 self.remote.send(command)?;
                 Ok(())
