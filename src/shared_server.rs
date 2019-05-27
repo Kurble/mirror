@@ -4,13 +4,13 @@ use std::ops::Deref;
 use std::sync::mpsc::Receiver;
 use serde::Serialize;
 
-pub struct SharedServer<T: for<'a> Reflect<'a> + Serialize, R: Remote> {
+pub struct SharedServer<T: Reflect + Serialize, R: Remote> {
     value: T,
     listener: Receiver<R>,
     clients: Vec<R>,
 }
 
-impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> Deref for SharedServer<T, R> {
+impl<T: Reflect + Serialize, R: Remote> Deref for SharedServer<T, R> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -18,7 +18,7 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> Deref for SharedServer<T, R>
     }
 }
 
-impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> SharedServer<T, R> {
+impl<T: Reflect + Serialize, R: Remote> SharedServer<T, R> {
     pub fn new(value: T, listener: Receiver<R>) -> Self {
         Self {
             value,
@@ -39,16 +39,22 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> SharedServer<T, R> {
             let mut reply = Vec::new();
 
             for message in self.clients[client_id].iter() {
-                if self.value.command_str(Reply::new(&mut reply), message.as_str()).is_err() {
-                    failed = true;
-                    break;
+                match self.value.command_str(Reply::new(&mut reply), message.as_str()) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        failed = true;
+                        println!("client had error: {:?}", e);
+                        break;
+                    }
                 }
             }
 
-            for client in self.clients.iter_mut() {
-                for msg in reply.iter() {
-                    if client.send(msg.as_str()).is_err() {
-                        client.close();
+            for sendto_id in 0..self.clients.len() {
+                for (msg, send) in reply.iter() {
+                    if *send || sendto_id != client_id {
+                        if self.clients[sendto_id].send(msg.as_str()).is_err() {
+                            self.clients[sendto_id].close();
+                        }
                     }
                 }
             }
@@ -66,7 +72,7 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> SharedServer<T, R> {
         self.value.command_str(Reply::new(&mut reply), cmd)?;
 
         for client in self.clients.iter_mut() {
-            for msg in reply.iter() {
+            for (msg, _) in reply.iter() {
                 if client.send(msg.as_str()).is_err() {
                     client.close();
                 }

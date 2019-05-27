@@ -1,9 +1,9 @@
 use super::*;
 use serde_json::from_value;
 
-pub trait Primitive<'de>: Deserialize<'de> { }
+pub trait Primitive: for<'de> Deserialize<'de> { }
 
-impl<'de, T: for<'e> Primitive<'e>> Reflect<'de> for T {
+impl<T: Primitive> Reflect for T {
     fn command<C: Context>(&mut self, _: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Set{ ref value } => {
@@ -17,16 +17,16 @@ impl<'de, T: for<'e> Primitive<'e>> Reflect<'de> for T {
 
 macro_rules! primitive {
     ($($pp:ty,)*) => { $(primitive!($pp);)* };
-    ($p:ty) => { impl<'de> Primitive<'de> for $p { } };
+    ($p:ty) => { impl Primitive for $p { } };
 }
 
 macro_rules! tuple {
     ($($p:ident),*) => {
-        impl<'de, $( $p : Primitive<'de> ),* > Primitive<'de> for ($($p),*) { }
+        impl<$( $p : Primitive ),* > Primitive for ($($p),*) { }
     };
 }
 
-primitive!(bool, i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, String, );
+primitive!(bool, i8, u8, i16, u16, i32, u32, f32, i64, u64, f64, isize, usize, String, );
 tuple!(A, B);
 tuple!(A, B, C);
 tuple!(A, B, C, D);

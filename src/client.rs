@@ -6,17 +6,17 @@ use std::marker::PhantomData;
 use serde_json::{Value, from_value};
 use futures::*;
 
-pub struct Client<T: for<'a> Reflect<'a>, R: Remote> {
+pub struct Client<T: Reflect, R: Remote> {
     value: T,
     remote: R,
 }
 
-struct Connect<T: for<'a> Reflect<'a>, R: Remote> {
+struct Connect<T: Reflect, R: Remote> {
     remote: Option<R>,
     ph: PhantomData<T>,
 }
 
-impl<T: for<'a> Reflect<'a>, R: Remote> Deref for Client<T, R> {
+impl<T: Reflect, R: Remote> Deref for Client<T, R> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -24,13 +24,13 @@ impl<T: for<'a> Reflect<'a>, R: Remote> Deref for Client<T, R> {
     }
 }
 
-impl<T: for<'a> Reflect<'a>, R: Remote> DerefMut for Client<T, R> {
+impl<T: Reflect, R: Remote> DerefMut for Client<T, R> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }
 }
 
-impl<T: for<'a> Reflect<'a>, R: Remote> Future for Connect<T, R> {
+impl<T: Reflect, R: Remote> Future for Connect<T, R> {
     type Item = Client<T, R>;
     type Error = Error;
 
@@ -51,7 +51,7 @@ impl<T: for<'a> Reflect<'a>, R: Remote> Future for Connect<T, R> {
     }
 }
 
-impl<T: for<'a> Reflect<'a>, R: Remote> Client<T, R> {
+impl<T: Reflect, R: Remote> Client<T, R> {
     pub fn new(remote: R) -> impl Future<Item=Client<T,R>, Error=Error> {
         Connect { remote: Some(remote), ph: PhantomData }
     }

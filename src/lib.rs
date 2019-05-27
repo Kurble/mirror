@@ -4,7 +4,9 @@ extern crate mirror_derive;
 
 pub mod error;
 pub mod list;
+pub mod map;
 pub mod primitive;
+pub mod option;
 pub mod hidden;
 
 pub mod remote;
@@ -17,7 +19,9 @@ pub use mirror_derive::*;
 
 pub use self::error::*;
 pub use self::list::*;
+pub use self::map::*;
 pub use self::primitive::*;
+pub use self::option::*;
 pub use self::hidden::*;
 pub use self::remote::*;
 pub use self::client::*;
@@ -95,7 +99,11 @@ pub trait Context {
 
     /// Immediately run a command on the provided value. This value should be self.
     /// If the context is within a network, it will also schedule a message to relevant `Remote`s.
-    fn command<R: for<'de> Reflect<'de>, S: AsRef<str>>(&mut self, value: &mut R, cmd: S) -> Result<(), Error>;
+    fn command<R: Reflect, S: AsRef<str>>(&mut self, value: &mut R, cmd: S) -> Result<(), Error>;
+
+    /// Same as command(..), but the scheduled message is *not* sent to the `Remote` that 
+    ///  created this `Context`.
+    fn local_command<R: Reflect, S: AsRef<str>>(&mut self, value: &mut R, cmd: S) -> Result<(), Error>;
 
     /// Take the context a level deeper. This is used by `Reflect` when traversing a path.
     /// Network contexts can use this to keep track of the root
@@ -103,7 +111,7 @@ pub trait Context {
 }
 
 /// Trait for executing commands
-pub trait Reflect<'de>: Deserialize<'de> {
+pub trait Reflect: for<'de> Deserialize<'de> {
     /// Executes the command on this object. If the command is executed successfully, Ok will be
     /// returned. Otherwise, an Err with the error will be returned.
     fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error>;
@@ -119,7 +127,14 @@ impl Context for () {
     type Inner = ();
 
     fn command<R, S>(&mut self, value: &mut R, command: S) -> Result<(), Error> where
-        R: for<'de> Reflect<'de>,
+        R: Reflect,
+        S: AsRef<str>
+    {
+        value.command_str((), command.as_ref())
+    }
+
+    fn local_command<R, S>(&mut self, value: &mut R, command: S) -> Result<(), Error> where
+        R: Reflect,
         S: AsRef<str>
     {
         value.command_str((), command.as_ref())

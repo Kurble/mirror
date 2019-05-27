@@ -4,18 +4,18 @@ use crate::reply::Reply;
 use std::ops::Deref;
 use std::sync::mpsc::Receiver;
 
-pub struct PrivateClient<T: for<'a> Reflect<'a> + Serialize, R: Remote> {
+pub struct PrivateClient<T: Reflect + Serialize, R: Remote> {
     value: T,
     remote: R,
 }
 
-pub struct PrivateServer<T: for<'a> Reflect<'a> + Serialize, R: Remote> {
+pub struct PrivateServer<T: Reflect + Serialize, R: Remote> {
     factory: Box<Fn() -> T>,
     listener: Receiver<R>,
     clients: Vec<PrivateClient<T, R>>,
 }
 
-impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> Deref for PrivateClient<T, R> {
+impl<T: Reflect + Serialize, R: Remote> Deref for PrivateClient<T, R> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -23,7 +23,7 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> Deref for PrivateClient<T, R
     }
 }
 
-impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateServer<T, R> {
+impl<T: Reflect + Serialize, R: Remote> PrivateServer<T, R> {
     pub fn new<F: 'static + Fn()->T>(factory: F, listener: Receiver<R>) -> Self {
         Self {
             factory: Box::new(factory),
@@ -52,8 +52,10 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateServer<T, R> {
                 }
             }
 
-            for r in reply.into_iter() {
-                failed &= client.remote.send(r.as_str()).is_err();
+            for (r, send) in reply.into_iter() {
+                if send {
+                    failed &= client.remote.send(r.as_str()).is_err();
+                }
             }
 
             if failed {
@@ -69,7 +71,7 @@ impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateServer<T, R> {
     }
 }
 
-impl<T: for<'a> Reflect<'a> + Serialize, R: Remote> PrivateClient<T, R> {
+impl<T: Reflect + Serialize, R: Remote> PrivateClient<T, R> {
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
         match self.value.command_str((), command) {
             Ok(_) => {

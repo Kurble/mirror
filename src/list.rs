@@ -1,7 +1,8 @@
 use super::*;
 use serde_json::from_value;
+use std::collections::VecDeque;
 
-impl<'de, T: for<'e> Reflect<'e>> Reflect<'de> for Vec<T> {
+impl<T: Reflect> Reflect for Vec<T> {
     fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Path { ref element, ref command } => {
@@ -33,10 +34,42 @@ impl<'de, T: for<'e> Reflect<'e>> Reflect<'de> for Vec<T> {
     }
 }
 
+impl<T: Reflect> Reflect for VecDeque<T> {
+    fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+        match command {
+            &Command::Path { ref element, ref command } => {
+                let index: usize = element.parse()?;
+                let elem: &mut T = self.get_mut(index).ok_or(Error::PathError)?;
+
+                let mut result = Ok(());
+                context.with_inner(element.as_str(), |c| result=elem.command(c, command));
+                result
+            },
+            &Command::Set { ref value } => {
+                *self = from_value(value.clone())?;
+                Ok(())
+            },
+            &Command::Push { ref value } => {
+                self.push_back(from_value(value.clone())?);
+                Ok(())
+            },
+            &Command::Pop => {
+                self.pop_back();
+                Ok(())
+            },
+            &Command::Remove { ref key } => {
+                self.remove(from_value(key.clone())?);
+                Ok(())
+            }
+            &_ => Err(Error::IncompatibleCommand),
+        }
+    }
+}
+
 macro_rules! array {
     ($($nn:expr,)*) => { $(array!($nn);)* };
     ($n:expr) => {
-        impl<'de, T: for<'e> Reflect<'e>> Reflect<'de> for [T; $n] {
+        impl<T: Reflect> Reflect for [T; $n] {
             fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
                 match command {
                     &Command::Path { ref element, ref command } => {

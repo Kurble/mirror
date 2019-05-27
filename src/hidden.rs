@@ -8,6 +8,10 @@ impl<T> Hidden<T> {
         Hidden(Some(value))
     }
 
+    pub fn none() -> Self {
+        Hidden(None)
+    }
+
     pub fn as_ref(&self) -> Option<&T> {
         self.0.as_ref()
     }
@@ -42,7 +46,7 @@ impl<'de, T> Deserialize<'de> for Hidden<T> {
     }
 }
 
-impl<'de, T> Reflect<'de> for Hidden<T> {
+impl<T> Reflect for Hidden<T> {
     fn command<C: Context>(&mut self, _: C, _: &Command) -> Result<(), Error> {
         Err(Error::IncompatibleCommand)
     }

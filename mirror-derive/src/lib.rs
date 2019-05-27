@@ -10,7 +10,7 @@ use proc_macro2::Span;
 use std::collections::HashSet;
 use syn::*;
 
-struct Action {
+struct MirroredAction {
     pub function:      LitStr,
     pub args:          usize,
 }
@@ -44,8 +44,8 @@ fn impl_reflect_struct(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     };
 
     let mut impl_generics: Generics = ast.generics.clone();
-    impl_generics.params.push(GenericParam::Lifetime(LifetimeDef::new(Lifetime::new("'de", Span::call_site()))));
-    impl_generics.where_clause = Some(parse_quote!(where #(#field_ty: Reflect<'de>,)*));
+    //impl_generics.params.push(GenericParam::Lifetime(LifetimeDef::new(Lifetime::new("'de", Span::call_site()))));
+    impl_generics.where_clause = Some(parse_quote!(where #(#field_ty: Reflect,)*));
 
     let (_, type_generics, _) = ast.generics.split_for_impl();
     let (impl_generics, _, where_clause) = impl_generics.split_for_impl();
@@ -53,7 +53,7 @@ fn impl_reflect_struct(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let field_str: Vec<Member> = field_id.clone();
 
     let tokens = quote! {
-        impl #impl_generics Reflect<'de> for #name #type_generics #where_clause {
+        impl #impl_generics Reflect for #name #type_generics #where_clause {
             fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
                 use serde_json::from_value;
                 match command {
@@ -90,7 +90,7 @@ fn impl_reflect_enum(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     unimplemented!();
 }
 
-fn attr_to_action(attr: &Meta) -> Action {
+fn attr_to_action(attr: &Meta) -> MirroredAction {
     if let &Meta::List(ref list) = attr {
         if list.ident == "Fn" {
             let mut function: Option<LitStr> = None;
@@ -134,7 +134,7 @@ fn attr_to_action(attr: &Meta) -> Action {
             let function =
                 function.expect("Invalid NodeAction attribute: Needs to specify a function");
 
-            Action {
+            MirroredAction {
                 function,
                 args,
             }
