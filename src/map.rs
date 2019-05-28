@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 impl<K: Primitive + Eq + Hash, V: Reflect> Reflect for HashMap<K, V> {
-    fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+    fn command<C: Context>(&mut self, mut context: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Path { ref element, ref command } => {
 

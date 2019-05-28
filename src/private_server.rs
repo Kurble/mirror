@@ -44,15 +44,15 @@ impl<T: Reflect + Serialize, R: Remote> PrivateServer<T, R> {
 
         for client in self.clients.iter_mut() {
             let mut failed = false;
-            let mut reply = Vec::new();
+            let reply = Reply::new(Vec::new());
 
             for message in client.remote.iter() {
-                if client.value.command_str(Reply::new(&mut reply), message.as_str()).is_err() {
+                if client.value.command_str(reply.clone(), message.as_str()).is_err() {
                     failed = true;
                 }
             }
 
-            for (r, send) in reply.into_iter() {
+            for (r, send) in reply.into_inner().into_iter() {
                 if send {
                     failed &= client.remote.send(r.as_str()).is_err();
                 }

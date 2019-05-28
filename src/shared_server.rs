@@ -36,10 +36,10 @@ impl<T: Reflect + Serialize, R: Remote> SharedServer<T, R> {
 
         for client_id in 0..self.clients.len() {
             let mut failed = false;
-            let mut reply = Vec::new();
+            let reply = Reply::new(Vec::new());
 
             for message in self.clients[client_id].iter() {
-                match self.value.command_str(Reply::new(&mut reply), message.as_str()) {
+                match self.value.command_str(reply.clone(), message.as_str()) {
                     Ok(_) => (),
                     Err(e) => {
                         failed = true;
@@ -48,6 +48,8 @@ impl<T: Reflect + Serialize, R: Remote> SharedServer<T, R> {
                     }
                 }
             }
+
+            let reply = reply.into_inner();
 
             for sendto_id in 0..self.clients.len() {
                 for (msg, send) in reply.iter() {
@@ -68,8 +70,9 @@ impl<T: Reflect + Serialize, R: Remote> SharedServer<T, R> {
     }
 
     pub fn local_command(&mut self, cmd: &str) -> Result<(), Error> {
-        let mut reply = Vec::new();
-        self.value.command_str(Reply::new(&mut reply), cmd)?;
+        let reply = Reply::new(Vec::new());
+        self.value.command_str(reply.clone(), cmd)?;
+        let reply = reply.into_inner();
 
         for client in self.clients.iter_mut() {
             for (msg, _) in reply.iter() {

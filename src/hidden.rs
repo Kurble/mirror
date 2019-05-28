@@ -12,6 +12,10 @@ impl<T> Hidden<T> {
         Hidden(None)
     }
 
+    pub fn take(&mut self) -> Option<T> {
+        self.0.take()
+    }
+
     pub fn as_ref(&self) -> Option<&T> {
         self.0.as_ref()
     }

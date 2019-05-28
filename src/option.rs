@@ -2,7 +2,7 @@ use super::*;
 use serde_json::from_value;
 
 impl<T: Reflect> Reflect for Option<T> {
-    fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+    fn command<C: Context>(&mut self, mut context: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Path { ref element, ref command } => {
                 if element == "val" {

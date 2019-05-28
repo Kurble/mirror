@@ -54,7 +54,7 @@ fn impl_reflect_struct(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
 
     let tokens = quote! {
         impl #impl_generics Reflect for #name #type_generics #where_clause {
-            fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+            fn command<C: Context>(&mut self, mut context: C, command: &Command) -> Result<(), Error> {
                 use serde_json::from_value;
                 match command {
                     &Command::Path { ref element, ref command } => {

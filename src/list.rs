@@ -3,7 +3,7 @@ use serde_json::from_value;
 use std::collections::VecDeque;
 
 impl<T: Reflect> Reflect for Vec<T> {
-    fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+    fn command<C: Context>(&mut self, mut context: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Path { ref element, ref command } => {
                 let index: usize = element.parse()?;
@@ -35,7 +35,7 @@ impl<T: Reflect> Reflect for Vec<T> {
 }
 
 impl<T: Reflect> Reflect for VecDeque<T> {
-    fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+    fn command<C: Context>(&mut self, mut context: C, command: &Command) -> Result<(), Error> {
         match command {
             &Command::Path { ref element, ref command } => {
                 let index: usize = element.parse()?;
@@ -70,7 +70,7 @@ macro_rules! array {
     ($($nn:expr,)*) => { $(array!($nn);)* };
     ($n:expr) => {
         impl<T: Reflect> Reflect for [T; $n] {
-            fn command<C: Context>(&mut self, context: C, command: &Command) -> Result<(), Error> {
+            fn command<C: Context>(&mut self, mut context: C, command: &Command) -> Result<(), Error> {
                 match command {
                     &Command::Path { ref element, ref command } => {
                         let index: usize = element.parse()?;

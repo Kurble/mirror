@@ -107,7 +107,7 @@ pub trait Context {
 
     /// Take the context a level deeper. This is used by `Reflect` when traversing a path.
     /// Network contexts can use this to keep track of the root
-    fn with_inner<F: FnMut(Self::Inner)>(self, path: &str, f: F);
+    fn with_inner<F: FnMut(Self::Inner)>(&mut self, path: &str, f: F);
 }
 
 /// Trait for executing commands
@@ -140,7 +140,7 @@ impl Context for () {
         value.command_str((), command.as_ref())
     }
 
-    fn with_inner<F: FnMut(Self::Inner)>(self, _: &str, mut f: F) { f(self) }
+    fn with_inner<F: FnMut(Self::Inner)>(&mut self, _: &str, mut f: F) { f(()) }
 }
 
 impl Command {
